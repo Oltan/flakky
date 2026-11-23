@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="1" tests="6" time="0.076" timestamp="2026-11-23T06:37:43.307855+00:00" hostname="vm"><testcase classname="tests.test_sepet" name="test_indirim_dogru" time="0.001" /><testcase classname="tests.test_sepet" name="test_kdv_urun_hatasi" time="0.002" /><testcase classname="tests.test_sepet" name="test_kdv_urun_hatasi" time="0.001" /><testcase classname="tests.test_sepet" name="test_kdv_urun_hatasi" time="0.001"><failure message="AssertionError: beklenen 120, gelen 118.0&#10;assert 118.0 == 120">sepet = {'urunler': []}
+
+    @allure.feature("Sepet")
+    def test_kdv_urun_hatasi(sepet):
+        with allure.step("KDV eklenir"):
+            sonuc = kdv_ekle(100)
+        with allure.step("Sonuç 120 olmalı"):
+&gt;           assert sonuc == 120, f"beklenen 120, gelen {sonuc}"
+E           AssertionError: beklenen 120, gelen 118.0
+E           assert 118.0 == 120
+
+tests/test_sepet.py:22: AssertionError</failure></testcase><testcase classname="tests.test_sepet" name="test_test_kodu_hatasi" time="0.001" /><testcase classname="tests.test_sepet" name="test_test_kodu_hatasi" time="0.001" /><testcase classname="tests.test_sepet" name="test_test_kodu_hatasi" time="0.001"><failure message="AttributeError: 'NoneType' object has no attribute 'ad'">sepet = {'urunler': []}
+
+    @allure.feature("Sepet")
+    def test_test_kodu_hatasi(sepet):
+        musteri = None
+        with allure.step("Müşteri adı okunur"):
+&gt;           musteri.ad  # noqa: B018 - kasıtlı test kodu hatası
+            ^^^^^^^^^^
+E           AttributeError: 'NoneType' object has no attribute 'ad'
+
+tests/test_sepet.py:29: AttributeError</failure></testcase><testcase classname="tests.test_sepet" name="test_odeme_servisi_ortam" time="0.002" /><testcase classname="tests.test_sepet" name="test_odeme_servisi_ortam" time="0.001" /><testcase classname="tests.test_sepet" name="test_odeme_servisi_ortam" time="0.001"><failure message="ConnectionRefusedError: [Errno 111] Connection refused">@allure.feature("Ödeme")
+    def test_odeme_servisi_ortam():
+        with allure.step("Ödeme servisine bağlanılır"):
+&gt;           s = socket.create_connection(("127.0.0.1", 1), timeout=1)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_sepet.py:35: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/local/lib/python3.13/socket.py:868: in create_connection
+    raise exceptions[0]
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+address = ('127.0.0.1', 1), timeout = 1, source_address = None
+all_errors = False
+
+    def create_connection(address, timeout=_GLOBAL_DEFAULT_TIMEOUT,
+                          source_address=None, *, all_errors=False):
+        """Connect to *address* and return the socket object.
+    
+        Convenience function.  Connect to *address* (a 2-tuple ``(host,
+        port)``) and return the socket object.  Passing the optional
+        *timeout* parameter will set the timeout on the socket instance
+        before attempting to connect.  If no *timeout* is supplied, the
+        global default timeout setting returned by :func:`getdefaulttimeout`
+        is used.  If *source_address* is set it must be a tuple of (host, port)
+        for the socket to bind as a source address before making the connection.
+        A host of '' or port 0 tells the OS to use the default. When a connection
+        cannot be created, raises the last error if *all_errors* is False,
+        and an ExceptionGroup of all errors if *all_errors* is True.
+        """
+    
+        host, port = address
+        exceptions = []
+        for res in getaddrinfo(host, port, 0, SOCK_STREAM):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket(af, socktype, proto)
+                if timeout is not _GLOBAL_DEFAULT_TIMEOUT:
+                    sock.settimeout(timeout)
+                if source_address:
+                    sock.bind(source_address)
+&gt;               sock.connect(sa)
+E               ConnectionRefusedError: [Errno 111] Connection refused
+
+/usr/local/lib/python3.13/socket.py:853: ConnectionRefusedError</failure></testcase><testcase classname="tests.test_sepet" name="test_flaky_ilk_denemede_kalir" time="0.001" /><testcase classname="tests.test_sepet" name="test_flaky_ilk_denemede_kalir" time="0.000" /><testcase classname="tests.test_sepet" name="test_atlanan" time="0.001"><skipped type="pytest.skip" message="özellik kapalı">/home/user/flakky/tools/ornek/pytest/tests/test_sepet.py:47: özellik kapalı</skipped></testcase></testsuite></testsuites>
