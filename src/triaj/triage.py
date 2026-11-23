@@ -128,7 +128,7 @@ def finish_run(conn: Connection, run_id: int, settings: Settings) -> FinishOut:
                 state, payload, meta = "done", None, {"reused_from": prev.origin}
                 reused += 1
             elif queued < settings.max_per_run:
-                state, payload, meta = "queued", {"context": ctx.get(r.id)}, {}
+                state, payload, meta = "queued", {"context": ctx.get(r.id), "flaky": r.test_key in flaky}, {}
                 queued += 1
             else:
                 state, payload, meta = "skipped", None, {"reason": "max_per_run"}
