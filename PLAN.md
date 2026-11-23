@@ -1,11 +1,11 @@
 # triaj — Uygulama Planı
 
-Bu belge README'deki tasarımı uygulanabilir iş paketlerine (kilometre taşlarına) böler.
-Tasarımın kendisi (taşınan mantık, veri modeli, API sözleşmesi, LLM akışı) README'de kalır;
+Bu belge [tasarım belgesindeki](docs/tasarim.md) tasarımı uygulanabilir iş paketlerine (kilometre taşlarına) böler.
+Tasarımın kendisi (taşınan mantık, veri modeli, API sözleşmesi, LLM akışı) tasarım belgesinde kalır;
 burada **ne sırayla, hangi dosyalarla, hangi testlerle ve ne zaman "bitti" sayılacağı** yazılı.
-README'de çelişen ya da eksik kalan noktalar en altta **Kararlar** ve **Açık sorular** bölümlerinde.
+tasarım belgesinde çelişen ya da eksik kalan noktalar en altta **Kararlar** ve **Açık sorular** bölümlerinde.
 
-Depo adı `flakky`, paket adı `triaj` (README'deki çalışma adı korunur).
+Depo adı `flakky`, paket adı `triaj` (tasarım belgesindeki çalışma adı korunur).
 
 ---
 
@@ -25,18 +25,20 @@ Depo adı `flakky`, paket adı `triaj` (README'deki çalışma adı korunur).
 ## M0 — İskelet (yarım gün)
 
 **Dosyalar:** `pyproject.toml`, `src/triaj/{__init__,config,db,api,auth}.py`, `alembic.ini`, `alembic/env.py`,
-`alembic/versions/0001_ilk.py`, `docker-compose.yml`, `Dockerfile`, `.github/workflows/ci.yml` (ya da `.gitlab-ci.yml`), `tests/conftest.py`.
+`alembic/versions/0001_ilk.py`, `docker-compose.yml`, `Dockerfile`, `.gitlab-ci.yml`, `README.md` (kısa tanıtım + çalıştırma), `tests/conftest.py`.
 
-- `config.py`: `pydantic-settings` ile README'deki tüm env değişkenleri + varsayılanlar.
+- `config.py`: `pydantic-settings` ile tasarım belgesindeki tüm env değişkenleri + varsayılanlar.
   `LLM_BUSY_HOURS="08:30-18:00"`, `LLM_BUSY_DAYS="1-5"` ayrıştırılıp doğrulanır.
 - `db.py`: SQLAlchemy Core `MetaData(schema="triaj")` (SQLite'ta şema yok sayılır), 5 tablo, indeksler, CHECK kısıtları.
 - `0001_ilk.py`: aynı şemayı oluşturan Alembic göçü (Postgres'te `CREATE SCHEMA IF NOT EXISTS triaj`).
 - `auth.py`: `Authorization: Bearer` → `API_TOKENS` içinde mi; `secrets.compare_digest`.
 - `api.py`: `/healthz` (süreç ayakta), `/readyz` (DB `SELECT 1` + göç sürümü güncel).
 - `docker-compose.yml`: `postgres`, `api` (uvicorn), `worker`, `sahte-llm` (M4'e kadar boş stub).
-- CI: ruff + pytest (SQLite) + pytest (Postgres servis konteyneriyle).
+- CI (GitLab, `.gitlab-ci.yml`): aşamalar `lint` (ruff), `test` (pytest SQLite + `services: postgres:16` ile pytest Postgres),
+  `build` (Docker imajı → GitLab Container Registry, yalnızca varsayılan dal ve etiketler). `pip` önbelleği `cache:` ile;
+  test raporu `--junitxml` → `artifacts:reports:junit` (servis kendi CI çıktısını da örnek veri olarak kullanabilir).
 
-**Bitti:** `docker compose up` → `/readyz` 200; `alembic upgrade head` temiz DB'de çalışır; CI yeşil.
+**Bitti:** `docker compose up` → `/readyz` 200; `alembic upgrade head` temiz DB'de çalışır; GitLab pipeline yeşil.
 
 ---
 
@@ -66,10 +68,10 @@ Depo adı `flakky`, paket adı `triaj` (README'deki çalışma adı korunur).
 
 **Dosyalar:** `flaky.py`, `rules.py`, `decisions.py`, `api.py` (finish, triage, flaky, history, decisions).
 
-- `flaky.py`: README'deki SQL birebir (`text()` ile, iki arka uçta çalışır). Dönen: `{test_key: [Evidence(failed_run, passed_run, surum)]}`.
+- `flaky.py`: tasarım belgesindeki SQL birebir (`text()` ile, iki arka uçta çalışır). Dönen: `{test_key: [Evidence(failed_run, passed_run, surum)]}`.
   Pencere `settings.flaky_window` ?? `FLAKY_WINDOW`.
 - `rules.py`: `rule_decision(result, is_flaky, patterns) -> (category, reason)`; sıra flaky → ortam (mesaj+iz alt dize) → broken → failed → bilinmiyor.
-  `DEFAULT_ENV_PATTERNS` README listesi; proje `env_patterns` varsa **yerine** geçer (bkz. Kararlar #6).
+  `DEFAULT_ENV_PATTERNS` tasarımdaki liste; proje `env_patterns` varsa **yerine** geçer (bkz. Kararlar #6).
 - `decisions.py`:
   - `add(result_id, category, source, reason[:2000], confidence, model, author, reused_from)` — yalnızca INSERT.
   - `current(result_id)`: admin'in en yenisi > (llm, `confidence >= auto_confidence`) en yenisi > rule en yenisi.
@@ -83,11 +85,11 @@ Depo adı `flakky`, paket adı `triaj` (README'deki çalışma adı korunur).
   `test_key` içinde `/` ve `#` olabilir → path parametresi `{test_key:path}`.
 - `POST|GET /v1/results/{id}/decisions` (admin: `author` zorunlu, `source` istemciden alınmaz, hep `admin`).
 
-**Testler:** `test_flaky_*` (7 adet, README), `test_rules_order`, `test_rules_project_patterns`,
+**Testler:** `test_flaky_*` (7 adet, tasarım belgesi), `test_rules_order`, `test_rules_project_patterns`,
 `test_decisions_precedence_admin_llm_rule`, `test_decisions_low_confidence_is_suggestion`, `test_decisions_never_deleted`,
 `test_finish_idempotent`, `test_triage_next_action_mapping`.
 
-**Bitti:** README "Doğrulama" senaryosunun ilk iki maddesi (3 koşum → flaky; commit değişince değil) API üzerinden geçiyor.
+**Bitti:** tasarım "Doğrulama" senaryosunun ilk iki maddesi (3 koşum → flaky; commit değişince değil) API üzerinden geçiyor.
 
 ---
 
@@ -107,7 +109,20 @@ Depo adı `flakky`, paket adı `triaj` (README'deki çalışma adı korunur).
 **Testler:** `test_adapter_allure_attempts_and_containers`, `test_adapter_junit_surefire_flaky`, `test_adapter_junit_pytest_xml`,
 `test_cli_server_down_exits_zero`, `test_cli_gitlab_env_defaults`.
 
-**Test verisi:** raporcu `testdata/allure/ornek-giris/` kopyası + gerçek surefire raporu (`rerunFailingTestsCount=2`) + gerçek `pytest --junitxml` çıktısı. (Bkz. Açık sorular #1.)
+**Test verisi — genel örnek projeler (`tools/ornek/`):** Hazır örnek yok; elle JSON uydurmak yerine küçük örnek projeler
+gerçek araçlarla koşturulup çıktıları `tests/data/` altına konur. Projeler kasıtlı olarak tüm kategorileri üretir:
+
+| Proje | Araç | Üretilen çıktı | İçerdiği durumlar |
+|---|---|---|---|
+| `tools/ornek/pytest/` | pytest + `allure-pytest` + `pytest-rerunfailures` (`--reruns 2`) | `allure-results/`, `junit.xml` | geçen, ürün hatası (assert), test kodu hatası (AttributeError → broken), ortam (ConnectionRefusedError), flaky (ilk denemede kalıp yeniden denemede geçen), skipped, metin eki, fixture (container before/after) |
+| `tools/ornek/maven-junit/` | JUnit 5 + surefire `rerunFailingTestsCount=2` | `surefire-reports/*.xml` | `flakyFailure`, `rerunFailure`, error, skipped |
+| `tools/ornek/maven-cucumber/` | Cucumber 7 + `allure-cucumber7-jvm` + surefire rerun | `allure-results/`, `.feature` + adım tanımları | başarısız adım, `Background`/hook ekleri (container), ortam zaman aşımı (TimeoutException) — M5 bağlam toplayıcı testleri de bunu kullanır |
+
+- Flaky davranış rastgele değil deterministik: `ORNEK_DENEME` sayacı dosyası/ortam değişkeniyle "ilk denemede kal, sonra geç".
+- `tools/ornek/uret.sh` hepsini koşturup çıktıları `tests/data/<proje>/` altına kopyalar; çıktılar depoya **eklenir**
+  (testler Java/Maven gerektirmesin). Zaman damgası/UUID gibi değişkenler olduğu gibi kalır (imza maskeleme testine de girdi olur).
+- Aynı projeler commit/koşum değiştirilerek birkaç kez yüklenir → M2 flaky senaryosu ve M6 uçtan uca betik için çok koşumlu veri.
+- GitLab'da ayrı, elle tetiklenen `ornek-uret` işi (maven + python imajı) veriyi yeniden üretip artifact olarak verir.
 
 **Bitti:** Gerçek Allure ve JUnit klasörleri `triaj upload` + `finish` ile yüklenip triage dönüyor.
 
@@ -150,7 +165,7 @@ Depo adı `flakky`, paket adı `triaj` (README'deki çalışma adı korunur).
 `test_llm_failure_keeps_rule_decision`, `test_max_per_run_skips_rest`, `test_worker_reclaims_stale_running`,
 `test_tokens_not_logged`. (HTTP taklidi `respx`; worker testleri Postgres'te.)
 
-**Bitti:** README "Doğrulama" 3. madde: sahte LLM ile `decision.source=llm`; 429 modunda iş beklenip biter; yavaş modda `failed` ve kural kararı kalır.
+**Bitti:** tasarım "Doğrulama" 3. madde: sahte LLM ile `decision.source=llm`; 429 modunda iş beklenip biter; yavaş modda `failed` ve kural kararı kalır.
 
 ---
 
@@ -178,20 +193,20 @@ Depo adı `flakky`, paket adı `triaj` (README'deki çalışma adı korunur).
 - `PUT /v1/projects/{p}/settings`: kısmi güncelleme; doğrulama (eşik 0–1.01, pencere 1–100, kalıplar boş olmayan dizgiler).
 - `GET /v1/projects/{p}/llm-accuracy?since=`: admin kararı olan sonuçlarda **admin'den önceki** en son LLM kararı vs admin kararı;
   karışıklık matrisi, kategori bazında kesinlik/duyarlılık, güven aralıklarına göre isabet (eşik seçimi için).
-- Uçtan uca senaryo betiği `tools/senaryo.py` (README Doğrulama 1–3).
+- Uçtan uca senaryo betiği `tools/senaryo.py` (tasarım Doğrulama 1–3).
 - Gerçek gateway ile mesai dışı 20 senaryoluk ölçüm; sonuç `docs/olcum.md`. `auto_confidence` ölçüme kadar `1.01`.
 
 **Testler:** `test_settings_validation`, `test_llm_accuracy_confusion_matrix`.
 
 ---
 
-## Kararlar (README'deki belirsizlik/çelişkilere önerilen çözüm)
+## Kararlar (tasarım belgesindeki belirsizlik/çelişkilere önerilen çözüm)
 
-1. **Zaman aşımı yeniden denenmez.** README "Dersler" ile worker bölümü çelişiyor (biri "tekrar denenmez", diğeri "Zaman aşımı/5xx → tries+1").
+1. **Zaman aşımı yeniden denenmez.** Tasarımda "Dersler" ile worker bölümü çelişiyor (biri "tekrar denenmez", diğeri "Zaman aşımı/5xx → tries+1").
    Öneri: zaman aşımı → doğrudan `failed`; yalnızca 5xx/bağlantı hatası `LLM_MAX_TRIES` kadar denenir. Test adı (`test_worker_timeout_marks_failed`) de bunu destekliyor.
 2. **"Kalan sonuç" tanımı:** `is_latest = true` ve `status ∈ {failed, broken}`. Aynı koşumda yeniden denemede geçen test kalan değildir
    (flaky kanıtı olarak listede görünür ama karar gerekmez). Önceki koşumlardaki geçişler yüzünden flaky sayılan, bu koşumda hâlâ kalan test → kural kararı `flaky`.
-3. **"Genel sistem talimatı (madde 4)"** README'de numaralı madde yok; "İstem kuralları" paragrafı kastedildiği varsayıldı.
+3. **"Genel sistem talimatı (madde 4)"** tasarım belgesinde numaralı madde yok; "İstem kuralları" paragrafı kastedildiği varsayıldı.
 4. **Bağlam saklama:** `context` ingest'te `llm_jobs.payload`'a hazırlanmak üzere tutulmalı ama "kod parçası saklanmaz" ilkesi var.
    Öneri: ingest'te `pending_context(result_id, payload JSONB)` geçici tablosu; finish'te ya job payload'ına taşınır ya silinir; job bitince payload NULL. LLM kapalıysa hiç yazılmaz.
 5. **Küresel eşzamanlılık:** compose'da birden fazla worker çalışabilir; süreç içi semafor yetmez. `running` sayımı + `LLM_BUSY_GAP_S` için
@@ -203,11 +218,11 @@ Depo adı `flakky`, paket adı `triaj` (README'deki çalışma adı korunur).
 
 ## Açık sorular (sizden gerekenler)
 
-1. **Test verisi:** raporcu deposundaki `testdata/allure/ornek-giris/` bu ortamda yok. Kopyalanıp bu depoya eklenmeli
-   (yoksa M3 gerçek veri yerine geçici örnekle başlar ve veri gelince değiştirilir).
-2. **CI platformu:** CLI GitLab değişkenlerini kullanıyor ama depo GitHub'da. Servisin kendi CI'ı GitHub Actions mı olsun?
-3. README'deki gateway soruları (json_schema desteği, görsel girdi, "düşünen" model) M4 başında sahte LLM yerine gerçek gateway'e tek çağrıyla yanıtlanacak.
-4. `README.md` şu an planın kendisi; M0'da kısa bir proje tanıtımı + çalıştırma talimatı ile değiştirilip tasarım `docs/tasarim.md`'ye taşınsın mı?
+1. Tasarım belgesindeki gateway soruları (json_schema desteği, görsel girdi, "düşünen" model) M4 başında sahte LLM yerine gerçek gateway'e tek çağrıyla yanıtlanacak.
+2. **Depo yeri:** CI GitLab için yazılır. Geliştirme bu bulut oturumunda sürdürülecekse depo GitHub'da kalıp GitLab'a
+   *pull mirror* ile aktarılabilir (GitLab → Settings → Repository → Mirroring); pipeline GitLab tarafında koşar.
+
+Kapanan sorular: test verisi → `tools/ornek/` ile üretilir (M3); CI → GitLab; tasarım → `docs/tasarim.md`.
 
 ## Takvim özeti
 
@@ -216,8 +231,8 @@ Depo adı `flakky`, paket adı `triaj` (README'deki çalışma adı korunur).
 | M0 | İskelet, şema, compose, CI | 0,5 g |
 | M1 | Ingest, POST /runs | 1 g |
 | M2 | Flaky, kurallar, kararlar, okuma uçları | 1,5 g |
-| M3 | CLI + Allure/JUnit | 1,5 g |
+| M3 | CLI + Allure/JUnit + örnek veri projeleri | 2 g |
 | M4 | LLM hattı + worker + sahte LLM | 3 g |
 | M5 | Bağlam toplayıcı | 1,5 g |
 | M6 | Ölçüm, ayarlar, uçtan uca | 1 g |
-| | **Toplam** | **~10 iş günü** |
+| | **Toplam** | **~10,5 iş günü** |
