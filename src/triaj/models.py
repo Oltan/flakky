@@ -138,6 +138,8 @@ class ProjectSettingsPatch(BaseModel):
     auto_confidence: float | None = Field(default=None, ge=0.0, le=1.01)
     llm_enabled: bool | None = None
 
+    _nonempty = field_validator("env_patterns", "env_patterns_extra")(ProjectSettings._nonempty.__func__)
+
 
 # --- Çıktı -----------------------------------------------------------------
 

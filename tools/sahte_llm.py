@@ -36,6 +36,9 @@ RULES = [
 
 
 def decide(prompt: str) -> tuple[str, float, str]:
+    # Yalnızca hata mesajı ve iz bloklarına bak (bağlam dosyaları kararı karıştırmasın).
+    focus = "\n".join(re.findall(r"### (?:Hata mesajı|Yığın izi)[^\n]*\n(.*?)(?=\n### |\Z)", prompt, re.S))
+    prompt = focus or prompt
     for rx, cat, conf in RULES:
         m = re.search(rx, prompt)
         if m:

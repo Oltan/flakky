@@ -133,3 +133,27 @@ def test_cli_wrong_token_warns(served):
     res = runner.invoke(cli.app, ["upload", "--format", "junit", "--dir", str(DATA / "maven-junit")], env=env)
     assert res.exit_code == 0 and "401" in res.stderr
     assert "yanlis-token" not in res.output
+
+
+def test_cli_upload_with_context_dry_run(in_tmp):
+    res = runner.invoke(
+        cli.app,
+        [
+            "upload",
+            "--format",
+            "allure",
+            "--dir",
+            str(DATA / "maven-cucumber" / "allure-results"),
+            "--context",
+            "--repo",
+            str(DATA.parent.parent / "tools" / "ornek" / "maven-cucumber"),
+            "--dry-run",
+        ],
+        env=GITLAB,
+    )
+    assert res.exit_code == 0, res.output
+    tests = json.loads(res.stdout)["tests"]
+    with_ctx = [t for t in tests if t.get("context")]
+    assert len(with_ctx) == 3
+    roles = {f["role"] for t in with_ctx for f in t["context"]["files"]}
+    assert roles == {"feature", "frame", "product"}

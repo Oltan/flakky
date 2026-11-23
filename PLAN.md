@@ -1,5 +1,9 @@
 # triaj — Uygulama Planı
 
+> **Durum (M0–M6 uygulandı):** 118 test SQLite ve Postgres'te geçiyor; `tools/senaryo.py` uçtan uca senaryosu
+> gerçek süreçlerle (Postgres + API + worker + sahte LLM) geçti. Açık: `docker compose` bu geliştirme ortamında
+> Docker Hub hız sınırı yüzünden denenemedi; gerçek gateway ölçümü (M6 son madde) gateway erişimi bekliyor.
+
 Bu belge [tasarım belgesindeki](docs/tasarim.md) tasarımı uygulanabilir iş paketlerine (kilometre taşlarına) böler.
 Tasarımın kendisi (taşınan mantık, veri modeli, API sözleşmesi, LLM akışı) tasarım belgesinde kalır;
 burada **ne sırayla, hangi dosyalarla, hangi testlerle ve ne zaman "bitti" sayılacağı** yazılı.
@@ -215,6 +219,19 @@ gerçek araçlarla koşturulup çıktıları `tests/data/` altına konur. Projel
 7. **Koşum sırası:** flaky sorgusu `runs.id` sırasına dayanıyor; CI'da geç gelen eski pipeline sırayı bozabilir. Şimdilik kabul; `meta.pipeline_created_at` saklanır, gerekirse sonradan sıralama ona alınır.
 8. **429 sonsuz döngüsü:** `tries` artmadığı için kalıcı 429'da iş hiç bitmez. `created_at + 24 saat` sonrası `failed (expired)`.
 9. **Token–proje eşlemesi yok:** her token tüm projelere yazabilir. İskelet için kabul; `API_TOKENS` biçimi ileride `token:proje1|proje2` olarak genişletilebilir.
+
+### Uygularken eklenen kararlar
+
+10. **Geçmiş ucu:** proje adı (GitLab yolu) ve test_key `/` içerebildiği için
+    `GET /v1/projects/{p}/tests/history?test_key=…` (test_key sorgu parametresi).
+11. **Koşum kimliği:** CLI varsayılanı `CI_JOB_ID`. GitLab'da "Retry" edilen iş aynı commit'te yeni koşum olur,
+    böylece flaky tespiti çalışır; pipeline/iş bilgisi `meta`'da.
+12. **pytest JUnit:** pytest tüm istisnaları `failure` yazar (broken ayrımı yok) ve pytest-rerunfailures'ın ara
+    denemeleri ayrıntısızdır. pytest için Allure çıktısı önerilir.
+13. **LLM açma:** proje ayarı `llm_enabled`; yoksa `LLM_ENABLED_DEFAULT` (varsayılan false).
+14. **Bağlam:** izdeki test dosyalarının depo içi importları da (ör. test edilen ürün sınıfı) `product` rolüyle eklenir.
+15. **429:** tüm kuyruk Retry-After kadar bekletilir (küresel), yalnızca ilgili iş değil.
+16. **Sert zaman aşımı:** `LLM_TIMEOUT_S × 1.1 + 1` sn (istemcinin kendi zaman aşımı çalışmasa bile).
 
 ## Açık sorular (sizden gerekenler)
 
