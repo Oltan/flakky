@@ -1,0 +1,68 @@
+# triaj servisinin kendi pipeline'ı.
+stages: [lint, test, build]
+
+default:
+  image: python:3.12-slim
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  key: pip-$CI_COMMIT_REF_SLUG
+  paths: [.cache/pip]
+
+.kur: &kur
+  - pip install -e ".[dev]"
+
+lint:
+  stage: lint
+  script:
+    - *kur
+    - ruff check src tests tools
+    - ruff format --check src tests tools
+
+test:
+  stage: test
+  services:
+    - name: postgres:16
+      alias: postgres
+  variables:
+    POSTGRES_USER: triaj
+    POSTGRES_PASSWORD: triaj
+    POSTGRES_DB: triaj_test
+    TRIAJ_TEST_PG_URL: postgresql://triaj:triaj@postgres:5432/triaj_test
+  script:
+    - *kur
+    - pytest -q --junitxml=rapor.xml
+  artifacts:
+    when: always
+    reports:
+      junit: rapor.xml
+
+build:
+  stage: build
+  image: docker:27
+  services: [docker:27-dind]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker build -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        docker tag "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+        docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_TAG"
+      fi
+
+# Örnek test verisini gerçek araçlarla yeniden üretir (elle tetiklenir).
+ornek-uret:
+  stage: build
+  image: maven:3.9-eclipse-temurin-21
+  when: manual
+  script:
+    - apt-get update -qq && apt-get install -y -qq python3 python3-venv >/dev/null
+    - tools/ornek/uret.sh
+  artifacts:
+    paths: [tests/data/]

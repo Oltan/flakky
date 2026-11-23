@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+*.db
+dist/
+build/
+tools/ornek/**/target/
+tools/ornek/**/allure-results/
+tools/ornek/**/.pytest_cache/

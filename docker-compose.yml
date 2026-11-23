@@ -1,0 +1,52 @@
+# Yerel deneme: postgres + api + worker + sahte LLM.
+#   docker compose up --build
+#   curl -H "Authorization: Bearer yerel-token" localhost:8000/readyz
+# Sahte LLM modu: curl -X POST localhost:8001/_mode -d '{"mode":"429"}'
+
+x-env: &env
+  DATABASE_URL: postgresql://triaj:triaj@postgres:5432/triaj
+  API_TOKENS: yerel-token
+  LLM_BASE_URL: http://sahte-llm:8001/v1
+  LLM_API_KEY: yerel-anahtar
+  LLM_MODEL: sahte-model
+  LLM_JSON_MODE: schema
+  LLM_ENABLED_DEFAULT: "true"
+  TZ: Europe/Istanbul
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: triaj
+      POSTGRES_PASSWORD: triaj
+      POSTGRES_DB: triaj
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U triaj"]
+      interval: 2s
+      retries: 30
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    environment: *env
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  worker:
+    build: .
+    command: ["sh", "-c", "sleep 3 && triaj-worker"]
+    environment: *env
+    depends_on:
+      postgres: { condition: service_healthy }
+      api: { condition: service_started }
+      sahte-llm: { condition: service_started }
+
+  sahte-llm:
+    build: .
+    command: ["uvicorn", "tools.sahte_llm:app", "--host", "0.0.0.0", "--port", "8001"]
+    ports: ["8001:8001"]
+
+volumes:
+  pgdata:
